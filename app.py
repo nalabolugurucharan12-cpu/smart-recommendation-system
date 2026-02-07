@@ -1,17 +1,19 @@
 from flask import Flask, render_template, request
-from database import get_db_connection, create_users_table
+from database import get_db_connection, create_users_table, create_products_table, create_interactions_table
 
 
 app = Flask(__name__)
 
 create_users_table()
+create_products_table()
+create_interactions_table()
 
 # Home page
 @app.route("/")
 def home():
     return render_template("index.html")
 
-
+# Login route
 @app.route("/login", methods=["GET", "POST"])
 def login():
     if request.method == "POST":
@@ -37,6 +39,7 @@ def login():
 
     return render_template("login.html")
 
+# Registration route
 @app.route("/register", methods=["GET", "POST"])
 def register():
 
@@ -58,6 +61,32 @@ def register():
         return "User Registered Successfully"
 
     return render_template("register.html")
+
+#sample-products route to add sample products to the database
+@app.route("/add-sample-products")
+def add_sample_products():
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    products = [
+        ("iPhone 13", "Electronics", 70000),
+        ("Running Shoes", "Sports", 3000),
+        ("Laptop", "Electronics", 60000),
+        ("T-shirt", "Clothing", 800),
+        ("Headphones", "Electronics", 2500)
+    ]
+
+    cursor.executemany(
+        "INSERT INTO products (name, category, price) VALUES (?, ?, ?)",
+        products
+    )
+
+    conn.commit()
+    conn.close()
+
+    return "Sample products added successfully!"
+
 
 
 if __name__ == "__main__":
