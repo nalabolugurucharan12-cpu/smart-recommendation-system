@@ -62,6 +62,11 @@ def register():
 
     return render_template("register.html")
 
+@app.route("/products")
+def products():
+    return render_template("products.html")
+
+
 #sample-products route to add sample products to the database
 @app.route("/add-sample-products")
 def add_sample_products():
@@ -86,6 +91,26 @@ def add_sample_products():
     conn.close()
 
     return "Sample products added successfully!"
+
+@app.route("/interact/<int:product_id>/<action>")
+def record_interaction(product_id, action):
+
+    # Temporary user_id 
+    user_id = 1  
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    cursor.execute(
+        "INSERT INTO interactions (user_id, product_id, action) VALUES (?, ?, ?)",
+        (user_id, product_id, action)
+    )
+
+    conn.commit()
+    conn.close()
+
+    return f"Recorded {action} for product {product_id}"
+
 
 
 
