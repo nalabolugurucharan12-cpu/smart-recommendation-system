@@ -1,5 +1,7 @@
 from flask import Flask, render_template, request
 from database import get_db_connection, create_users_table, create_products_table, create_interactions_table
+from recommender import get_popular_products
+
 
 
 app = Flask(__name__)
@@ -110,6 +112,14 @@ def record_interaction(product_id, action):
     conn.close()
 
     return f"Recorded {action} for product {product_id}"
+
+
+@app.route("/recommend/popular")
+def recommend_popular():
+
+    products = get_popular_products()
+
+    return str(products)
 
 
 
