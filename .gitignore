@@ -2,5 +2,6 @@ data/
 .env
 .venv/
 __pycache__/
-users.db
 check_db.py
+*.db
+

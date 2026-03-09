@@ -1,13 +1,14 @@
 import sqlite3
 
-# to connect to database
+
+# connect to database
 def get_db_connection():
     conn = sqlite3.connect("users.db")
     conn.row_factory = sqlite3.Row
     return conn
 
 
-# function to create users table
+# create users table
 def create_users_table():
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -23,24 +24,24 @@ def create_users_table():
     conn.commit()
     conn.close()
 
-    # Products table
+
+# create products table
 def create_products_table():
     conn = get_db_connection()
     cursor = conn.cursor()
 
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS products (
-            product_id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT NOT NULL,
-            category TEXT,
-            price REAL
+            product_id INTEGER PRIMARY KEY,
+            category TEXT
         )
     """)
 
     conn.commit()
     conn.close()
 
-# Interaction Table for ML
+
+# create interactions table
 def create_interactions_table():
     conn = get_db_connection()
     cursor = conn.cursor()
