@@ -40,6 +40,41 @@ def get_trending_products(limit=5):
     return results
 
 
+def get_user_recommendations(user_id, limit=5):
+
+    conn = sqlite3.connect("users.db")
+    cursor = conn.cursor()
+
+    # Find categories user interacted with
+    cursor.execute("""
+        SELECT DISTINCT p.category
+        FROM interactions i
+        JOIN products p ON i.product_id = p.product_id
+        WHERE i.user_id = ?
+    """, (user_id,))
+
+    categories = [row[0] for row in cursor.fetchall()]
+
+    if not categories:
+        conn.close()
+        return []
+
+    # Recommend products from same categories
+    query = f"""
+        SELECT product_id, category
+        FROM products
+        WHERE category IN ({','.join(['?']*len(categories))})
+        LIMIT ?
+    """
+
+    cursor.execute(query, (*categories, limit))
+
+    results = cursor.fetchall()
+    conn.close()
+
+    return results
+
+
 if __name__ == "__main__":
 
     print("Popular products:")
@@ -47,4 +82,8 @@ if __name__ == "__main__":
 
     print("\nTrending products:")
     print(get_trending_products())
+
+    print("\nUser recommendations for user 1:")
+    print(get_user_recommendations(1))
+
 
