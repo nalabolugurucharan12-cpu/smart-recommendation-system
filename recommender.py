@@ -7,21 +7,36 @@ def collaborative_recommend(user_id, limit=5):
 
     conn = sqlite3.connect("users.db")
 
-    # Load interactions
     df = pd.read_sql_query(
-        "SELECT user_id, product_id FROM interactions",
+        "SELECT user_id, product_id, action FROM interactions",
         conn
     )
 
     conn.close()
 
-    # Create user-item matrix
-    user_item = pd.crosstab(df["user_id"], df["product_id"])
+    # Assign weights
+    weight_map = {
+        "view": 1,
+        "cart": 3,
+        "purchase": 5
+    }
+
+    df["weight"] = df["action"].map(weight_map)
+
+    # Aggregate weights per user-product
+    df_grouped = df.groupby(["user_id", "product_id"])["weight"].sum().reset_index()
+
+    # Create weighted matrix
+    user_item = df_grouped.pivot(
+        index="user_id",
+        columns="product_id",
+        values="weight"
+    ).fillna(0)
 
     if user_id not in user_item.index:
         return []
 
-    # Compute similarity between users
+    # Compute similarity
     similarity = cosine_similarity(user_item)
 
     similarity_df = pd.DataFrame(
@@ -30,21 +45,22 @@ def collaborative_recommend(user_id, limit=5):
         columns=user_item.index
     )
 
-    # Find similar users
+    # Get similar users
     similar_users = similarity_df[user_id].sort_values(ascending=False)[1:6]
 
     similar_user_ids = similar_users.index
 
-    # Products interacted by similar users
-    similar_products = df[df["user_id"].isin(similar_user_ids)]
+    # Get products from similar users
+    similar_products = df_grouped[df_grouped["user_id"].isin(similar_user_ids)]
 
-    product_counts = (
-        similar_products["product_id"]
-        .value_counts()
+    product_scores = (
+        similar_products.groupby("product_id")["weight"]
+        .sum()
+        .sort_values(ascending=False)
         .head(limit)
     )
 
-    return list(product_counts.index)
+    return list(product_scores.index)
 
 
 def get_popular_products(limit=5):
