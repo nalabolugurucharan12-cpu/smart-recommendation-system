@@ -1,4 +1,50 @@
 import sqlite3
+import pandas as pd
+from sklearn.metrics.pairwise import cosine_similarity
+
+
+def collaborative_recommend(user_id, limit=5):
+
+    conn = sqlite3.connect("users.db")
+
+    # Load interactions
+    df = pd.read_sql_query(
+        "SELECT user_id, product_id FROM interactions",
+        conn
+    )
+
+    conn.close()
+
+    # Create user-item matrix
+    user_item = pd.crosstab(df["user_id"], df["product_id"])
+
+    if user_id not in user_item.index:
+        return []
+
+    # Compute similarity between users
+    similarity = cosine_similarity(user_item)
+
+    similarity_df = pd.DataFrame(
+        similarity,
+        index=user_item.index,
+        columns=user_item.index
+    )
+
+    # Find similar users
+    similar_users = similarity_df[user_id].sort_values(ascending=False)[1:6]
+
+    similar_user_ids = similar_users.index
+
+    # Products interacted by similar users
+    similar_products = df[df["user_id"].isin(similar_user_ids)]
+
+    product_counts = (
+        similar_products["product_id"]
+        .value_counts()
+        .head(limit)
+    )
+
+    return list(product_counts.index)
 
 
 def get_popular_products(limit=5):

@@ -1,6 +1,6 @@
 from flask import Flask, render_template, request
 from database import get_db_connection, create_users_table, create_products_table, create_interactions_table
-from recommender import get_trending_products, get_popular_products, get_user_recommendations
+from recommender import get_trending_products, get_popular_products, get_user_recommendations, collaborative_recommend
 
 app = Flask(__name__)
 
@@ -115,6 +115,14 @@ def recommend_trending():
 def recommend_user(user_id):
 
     products = get_user_recommendations(user_id)
+
+    return str(products)
+
+# Collaborative filtering recommendations
+@app.route("/recommend/collaborative/<int:user_id>")
+def recommend_collaborative(user_id):
+
+    products = collaborative_recommend(user_id)
 
     return str(products)
 
