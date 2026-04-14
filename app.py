@@ -1,6 +1,7 @@
-from flask import Flask, render_template, request
+from flask import Flask, render_template, request, jsonify
 from database import get_db_connection, create_users_table, create_products_table, create_interactions_table
-from recommender import get_trending_products, get_popular_products, get_user_recommendations, collaborative_recommend
+from recommender import get_trending_products, get_popular_products, get_user_recommendations,collaborative_recommend, hybrid_recommend
+
 
 app = Flask(__name__)
 
@@ -10,13 +11,11 @@ create_products_table()
 create_interactions_table()
 
 
-# Home page
 @app.route("/")
 def home():
     return render_template("index.html")
 
 
-# Login route
 @app.route("/login", methods=["GET", "POST"])
 def login():
 
@@ -44,7 +43,6 @@ def login():
     return render_template("login.html")
 
 
-# Registration route
 @app.route("/register", methods=["GET", "POST"])
 def register():
 
@@ -69,17 +67,15 @@ def register():
     return render_template("register.html")
 
 
-# Products page
 @app.route("/products")
 def products():
     return render_template("products.html")
 
 
-# Record interaction
 @app.route("/interact/<int:product_id>/<action>")
 def record_interaction(product_id, action):
 
-    user_id = 1  # temporary user
+    user_id = 1  # temporary
 
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -95,36 +91,34 @@ def record_interaction(product_id, action):
     return f"Recorded {action} for product {product_id}"
 
 
-# Popular recommendations
 @app.route("/recommend/popular")
 def recommend_popular():
-
     products = get_popular_products()
-    return str(products)
+    return jsonify(products)
 
 
-# Trending recommendations
 @app.route("/recommend/trending")
 def recommend_trending():
-
     products = get_trending_products()
-    return str(products)
+    return jsonify(products)
 
-# User based recommendations
+
 @app.route("/recommend/user/<int:user_id>")
 def recommend_user(user_id):
-
     products = get_user_recommendations(user_id)
+    return jsonify(products)
 
-    return str(products)
 
-# Collaborative filtering recommendations
 @app.route("/recommend/collaborative/<int:user_id>")
 def recommend_collaborative(user_id):
-
     products = collaborative_recommend(user_id)
+    return jsonify(products)
 
-    return str(products)
+
+@app.route("/recommend/hybrid/<int:user_id>")
+def recommend_hybrid_route(user_id):
+    products = hybrid_recommend(user_id)
+    return jsonify(products)
 
 
 if __name__ == "__main__":

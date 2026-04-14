@@ -8,35 +8,41 @@ def collaborative_recommend(user_id, limit=5):
     conn = sqlite3.connect("users.db")
 
     df = pd.read_sql_query(
-        "SELECT user_id, product_id, action FROM interactions",
+        "SELECT user_id, product_id, action, timestamp FROM interactions",
         conn
     )
-
     conn.close()
 
-    # Assign weights
+    if df.empty:
+        return []
+
+    df["timestamp"] = pd.to_datetime(df["timestamp"])
+
     weight_map = {
         "view": 1,
         "cart": 3,
         "purchase": 5
     }
 
-    df["weight"] = df["action"].map(weight_map)
+    df["action_weight"] = df["action"].map(weight_map)
 
-    # Aggregate weights per user-product
-    df_grouped = df.groupby(["user_id", "product_id"])["weight"].sum().reset_index()
+    current_time = df["timestamp"].max()
+    df["days_old"] = (current_time - df["timestamp"]).dt.days
 
-    # Create weighted matrix
+    df["recency_weight"] = 1 / (1 + df["days_old"])
+    df["final_weight"] = df["action_weight"] * df["recency_weight"]
+
+    df_grouped = df.groupby(["user_id", "product_id"])["final_weight"].sum().reset_index()
+
     user_item = df_grouped.pivot(
         index="user_id",
         columns="product_id",
-        values="weight"
+        values="final_weight"
     ).fillna(0)
 
     if user_id not in user_item.index:
         return []
 
-    # Compute similarity
     similarity = cosine_similarity(user_item)
 
     similarity_df = pd.DataFrame(
@@ -45,22 +51,22 @@ def collaborative_recommend(user_id, limit=5):
         columns=user_item.index
     )
 
-    # Get similar users
     similar_users = similarity_df[user_id].sort_values(ascending=False)[1:6]
-
     similar_user_ids = similar_users.index
 
-    # Get products from similar users
     similar_products = df_grouped[df_grouped["user_id"].isin(similar_user_ids)]
 
     product_scores = (
-        similar_products.groupby("product_id")["weight"]
+        similar_products.groupby("product_id")["final_weight"]
         .sum()
         .sort_values(ascending=False)
-        .head(limit)
     )
 
-    return list(product_scores.index)
+    # REMOVE ALREADY SEEN PRODUCTS
+    seen_products = set(df[df["user_id"] == user_id]["product_id"])
+    product_scores = product_scores[~product_scores.index.isin(seen_products)]
+
+    return list(product_scores.head(limit).index)
 
 
 def get_popular_products(limit=5):
@@ -107,7 +113,6 @@ def get_user_recommendations(user_id, limit=5):
     conn = sqlite3.connect("users.db")
     cursor = conn.cursor()
 
-    # Find categories user interacted with
     cursor.execute("""
         SELECT DISTINCT p.category
         FROM interactions i
@@ -121,7 +126,6 @@ def get_user_recommendations(user_id, limit=5):
         conn.close()
         return []
 
-    # Recommend products from same categories
     query = f"""
         SELECT product_id, category
         FROM products
@@ -137,15 +141,24 @@ def get_user_recommendations(user_id, limit=5):
     return results
 
 
-if __name__ == "__main__":
+# 🔥 HYBRID RECOMMENDER
+def hybrid_recommend(user_id, limit=5):
 
-    print("Popular products:")
-    print(get_popular_products())
+    collab = collaborative_recommend(user_id, limit=10)
+    content = [p[0] for p in get_user_recommendations(user_id, limit=10)]
+    popular = [p[0] for p in get_popular_products(limit=10)]
 
-    print("\nTrending products:")
-    print(get_trending_products())
+    combined = collab + content + popular
 
-    print("\nUser recommendations for user 1:")
-    print(get_user_recommendations(1))
+    seen = set()
+    final = []
 
+    for p in combined:
+        if p not in seen:
+            seen.add(p)
+            final.append(p)
 
+        if len(final) == limit:
+            break
+
+    return final
