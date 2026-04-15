@@ -141,15 +141,26 @@ def get_user_recommendations(user_id, limit=5):
     return results
 
 
-# 🔥 HYBRID RECOMMENDER
+#  HYBRID RECOMMENDE
 def hybrid_recommend(user_id, limit=5):
 
     collab = collaborative_recommend(user_id, limit=10)
     content = [p[0] for p in get_user_recommendations(user_id, limit=10)]
+    trending = [p[0] for p in get_trending_products(limit=10)]
     popular = [p[0] for p in get_popular_products(limit=10)]
 
-    combined = collab + content + popular
+    #  COLD START HANDLING
+    if not collab and not content:
+        # Try trending first
+        if trending:
+            return trending[:limit]
+        # Final fallback
+        return popular[:limit]
 
+    # Combine all
+    combined = collab + content + trending + popular
+
+    # Remove duplicates while preserving order
     seen = set()
     final = []
 
