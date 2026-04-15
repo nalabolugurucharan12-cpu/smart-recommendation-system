@@ -2,27 +2,54 @@
 <html>
 <head>
     <title>Products</title>
+    <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
 
-<h1>Products</h1>
+<h2>Products</h2>
 
-<ul>
-    <li>
-        iPhone 13 
-        <a href="/interact/1/view">View</a>
-        <a href="/interact/1/cart">Add to Cart</a>
-        <a href="/interact/1/purchase">Buy</a>
-    </li>
+<div id="products">
+    <button onclick="interact(101, 'view')">Product 101 (View)</button>
+    <button onclick="interact(102, 'cart')">Product 102 (Cart)</button>
+    <button onclick="interact(103, 'purchase')">Product 103 (Buy)</button>
+</div>
 
-    <li>
-        Running Shoes
-        <a href="/interact/2/view">View</a>
-        <a href="/interact/2/cart">Add to Cart</a>
-        <a href="/interact/2/purchase">Buy</a>
-    </li>
+<hr>
 
-</ul>
+<h3>Recommendations</h3>
+
+<button onclick="loadRecommendations('/recommend/popular')">Popular</button>
+<button onclick="loadRecommendations('/recommend/trending')">Trending</button>
+<button onclick="loadRecommendations('/recommend/user/1')">User-Based</button>
+<button onclick="loadRecommendations('/recommend/collaborative/1')">Collaborative</button>
+<button onclick="loadRecommendations('/recommend/hybrid/1')">🔥 Hybrid</button>
+
+<ul id="results"></ul>
+
+<a href="/">Back</a>
+
+<script>
+function interact(productId, action) {
+    fetch(`/interact/${productId}/${action}`)
+        .then(res => res.text())
+        .then(data => alert(data));
+}
+
+function loadRecommendations(url) {
+    fetch(url)
+        .then(res => res.json())
+        .then(data => {
+            let list = document.getElementById("results");
+            list.innerHTML = "";
+
+            data.forEach(item => {
+                let li = document.createElement("li");
+                li.innerText = JSON.stringify(item);
+                list.appendChild(li);
+            });
+        });
+}
+</script>
 
 </body>
 </html>
