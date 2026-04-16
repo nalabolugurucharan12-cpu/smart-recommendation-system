@@ -1,9 +1,11 @@
 from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, jsonify, redirect, url_for, session
 from database import get_db_connection, create_users_table, create_products_table, create_interactions_table
 from recommender import get_trending_products, get_popular_products, get_user_recommendations,collaborative_recommend, hybrid_recommend
 
 
 app = Flask(__name__)
+app.secret_key = "secret123"  # For session management, in production use a secure key
 
 # Initialize tables
 create_users_table()
@@ -36,7 +38,8 @@ def login():
         conn.close()
 
         if user:
-            return "Login Successful"
+         session["user_id"] = user["id"]
+         return redirect(url_for("products"))
         else:
             return "Invalid Credentials"
 
@@ -115,11 +118,16 @@ def recommend_collaborative(user_id):
     return jsonify(products)
 
 
-@app.route("/recommend/hybrid/<int:user_id>")
-def recommend_hybrid_route(user_id):
+@app.route("/recommend/hybrid")
+def recommend_hybrid_logged_in():
+
+    user_id = session.get("user_id")
+
+    if not user_id:
+        return jsonify({"error": "User not logged in"})
+
     products = hybrid_recommend(user_id)
     return jsonify(products)
-
 
 if __name__ == "__main__":
     app.run(debug=True)

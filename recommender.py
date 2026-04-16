@@ -16,8 +16,9 @@ def collaborative_recommend(user_id, limit=5):
     if df.empty:
         return []
 
-    df["timestamp"] = pd.to_datetime(df["timestamp"])
-
+    df["timestamp"] = pd.to_datetime(df["timestamp"], errors='coerce')
+    df = df.dropna(subset=["timestamp"])
+    
     weight_map = {
         "view": 1,
         "cart": 3,

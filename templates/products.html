@@ -18,11 +18,10 @@
 
 <h3>Recommendations</h3>
 
+<!-- Removed hardcoded user_id -->
 <button onclick="loadRecommendations('/recommend/popular')">Popular</button>
 <button onclick="loadRecommendations('/recommend/trending')">Trending</button>
-<button onclick="loadRecommendations('/recommend/user/1')">User-Based</button>
-<button onclick="loadRecommendations('/recommend/collaborative/1')">Collaborative</button>
-<button onclick="loadRecommendations('/recommend/hybrid/1')">🔥 Hybrid</button>
+<button onclick="loadRecommendations('/recommend/hybrid')">🔥 Hybrid</button>
 
 <ul id="results"></ul>
 
@@ -49,6 +48,15 @@ function loadRecommendations(url) {
             });
         });
 }
+
+// ✅ AUTO LOAD recommendations when page opens
+window.onload = function() {
+    loadRecommendations('/recommend/hybrid');
+};
+
+window.onload = function() {
+    loadRecommendations('/recommend/hybrid');
+};
 </script>
 
 </body>
