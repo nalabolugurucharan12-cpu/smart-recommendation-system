@@ -1,13 +1,24 @@
-from flask import Flask, render_template, request, jsonify
 from flask import Flask, render_template, request, jsonify, redirect, url_for, session
-from database import get_db_connection, create_users_table, create_products_table, create_interactions_table
-from recommender import get_trending_products, get_popular_products, get_user_recommendations,collaborative_recommend, hybrid_recommend
-
+from database import (
+    get_db_connection,
+    create_users_table,
+    create_products_table,
+    create_interactions_table
+)
+from recommender import (
+    get_trending_products,
+    get_popular_products,
+    get_user_recommendations,
+    collaborative_recommend,
+    hybrid_recommend,
+    get_product_details
+)
 
 app = Flask(__name__)
-app.secret_key = "secret123"  # For session management, in production use a secure key
+app.secret_key = "secret123"
 
-# Initialize tables
+
+# Initialize DB
 create_users_table()
 create_products_table()
 create_interactions_table()
@@ -17,6 +28,8 @@ create_interactions_table()
 def home():
     return render_template("index.html")
 
+
+# ---------------- AUTH ----------------
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
@@ -30,7 +43,7 @@ def login():
         cursor = conn.cursor()
 
         cursor.execute(
-            "SELECT * FROM users WHERE username = ? AND password = ?",
+            "SELECT * FROM users WHERE username=? AND password=?",
             (username, password)
         )
 
@@ -38,8 +51,8 @@ def login():
         conn.close()
 
         if user:
-         session["user_id"] = user["id"]
-         return redirect(url_for("products"))
+            session["user_id"] = user["id"]
+            return redirect(url_for("products"))
         else:
             return "Invalid Credentials"
 
@@ -65,20 +78,45 @@ def register():
         conn.commit()
         conn.close()
 
-        return "User Registered Successfully"
+        return redirect(url_for("login"))
 
     return render_template("register.html")
 
 
+# ---------------- PRODUCTS ----------------
+
 @app.route("/products")
 def products():
+    if "user_id" not in session:
+        return redirect(url_for("login"))
     return render_template("products.html")
 
 
-@app.route("/interact/<int:product_id>/<action>")
-def record_interaction(product_id, action):
+@app.route("/products/list")
+def list_products():
 
-    user_id = 1  # temporary
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("SELECT product_id, category FROM products LIMIT 100")
+    rows = cursor.fetchall()
+    conn.close()
+
+    return jsonify([
+        {"product_id": r["product_id"], "category": r["category"]}
+        for r in rows
+    ])
+
+
+# ---------------- INTERACTIONS ----------------
+
+@app.route("/interact/<int:product_id>/<action>")
+def interact(product_id, action):
+
+    user_id = session.get("user_id")
+
+    if not user_id:
+        return jsonify({"error": "Login required"})
 
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -91,43 +129,59 @@ def record_interaction(product_id, action):
     conn.commit()
     conn.close()
 
-    return f"Recorded {action} for product {product_id}"
+    return jsonify({"message": f"{action} recorded"})
 
+
+# ---------------- RECOMMENDATIONS ----------------
 
 @app.route("/recommend/popular")
 def recommend_popular():
     products = get_popular_products()
-    return jsonify(products)
+    return jsonify(get_product_details(products))
 
 
 @app.route("/recommend/trending")
 def recommend_trending():
     products = get_trending_products()
-    return jsonify(products)
+    return jsonify(get_product_details(products))
 
 
-@app.route("/recommend/user/<int:user_id>")
-def recommend_user(user_id):
-    products = get_user_recommendations(user_id)
-    return jsonify(products)
-
-
-@app.route("/recommend/collaborative/<int:user_id>")
-def recommend_collaborative(user_id):
-    products = collaborative_recommend(user_id)
-    return jsonify(products)
-
-
-@app.route("/recommend/hybrid")
-def recommend_hybrid_logged_in():
+@app.route("/recommend/user")
+def recommend_user():
 
     user_id = session.get("user_id")
 
     if not user_id:
-        return jsonify({"error": "User not logged in"})
+        return jsonify([])
 
-    products = hybrid_recommend(user_id)
-    return jsonify(products)
+    products = get_user_recommendations(user_id)
+    return jsonify(get_product_details(products))
+
+
+@app.route("/recommend/collaborative")
+def recommend_collaborative():
+
+    user_id = session.get("user_id")
+
+    if not user_id:
+        return jsonify([])
+
+    products = collaborative_recommend(user_id)
+    return jsonify(get_product_details(products))
+
+
+@app.route("/recommend/hybrid")
+def recommend_hybrid():
+
+    user_id = session.get("user_id")
+
+    if not user_id:
+        return jsonify([])
+
+    return jsonify(hybrid_recommend(user_id))
+
+
+# ---------------- RUN ----------------
 
 if __name__ == "__main__":
     app.run(debug=True)

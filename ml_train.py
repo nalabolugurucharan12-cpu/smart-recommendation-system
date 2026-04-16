@@ -2,57 +2,78 @@ import pandas as pd
 import sqlite3
 from models import extract_product_categories
 
+DB_NAME = "users.db"
+
+
+# ---------------- LOAD DATA ----------------
 
 def load_and_clean_events():
 
-    df = pd.read_csv("data/events.csv", nrows=3000)
+    df = pd.read_csv("data/events.csv", nrows=5000)
 
-    # Rename columns
     df = df.rename(columns={
         "visitorid": "user_id",
         "itemid": "product_id",
         "event": "action"
     })
 
-    # Convert event names
     df["action"] = df["action"].replace({
         "addtocart": "cart",
         "transaction": "purchase"
     })
 
-    # Convert timestamp
-    df["timestamp"] = pd.to_datetime(df["timestamp"], unit="ms").astype(str)
+    df["timestamp"] = pd.to_datetime(df["timestamp"], unit="ms")
 
-    # Keep required columns
     df = df[["user_id", "product_id", "action", "timestamp"]]
 
     return df
 
 
-def insert_interactions(df):
+# ---------------- INSERT USERS ----------------
 
-    conn = sqlite3.connect("users.db")
+def insert_users(df):
+
+    conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
 
-    for _, row in df.iterrows():
+    users = df["user_id"].drop_duplicates().tolist()
 
-        cursor.execute(
-            """
-            INSERT INTO interactions (user_id, product_id, action, timestamp)
-            VALUES (?, ?, ?, ?)
-            """,
-            (row["user_id"], row["product_id"], row["action"], row["timestamp"])
-        )
+    cursor.executemany(
+        "INSERT OR IGNORE INTO users (id, username, password) VALUES (?, ?, ?)",
+        [(uid, f"user_{uid}", "pass123") for uid in users]
+    )
 
     conn.commit()
     conn.close()
 
-    print("Interactions inserted")
+    print(f"Inserted {len(users)} users")
 
 
-def get_interaction_product_ids():
+# ---------------- INSERT INTERACTIONS ----------------
 
-    conn = sqlite3.connect("users.db")
+def insert_interactions(df):
+
+    conn = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
+
+    data = df.to_records(index=False)
+
+    cursor.executemany("""
+        INSERT INTO interactions (user_id, product_id, action, timestamp)
+        VALUES (?, ?, ?, ?)
+    """, data)
+
+    conn.commit()
+    conn.close()
+
+    print(f"Inserted {len(df)} interactions")
+
+
+# ---------------- GET PRODUCT IDS ----------------
+
+def get_product_ids():
+
+    conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
 
     cursor.execute("SELECT DISTINCT product_id FROM interactions")
@@ -61,46 +82,53 @@ def get_interaction_product_ids():
 
     conn.close()
 
-    print("Total products in interactions:", len(product_ids))
+    print(f"Total products: {len(product_ids)}")
 
-    return set(product_ids)
+    return product_ids
 
+
+# ---------------- INSERT PRODUCTS ----------------
 
 def insert_products(df):
 
-    conn = sqlite3.connect("users.db")
+    conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
 
-    for _, row in df.iterrows():
+    data = df.to_records(index=False)
 
-        cursor.execute(
-            """
-            INSERT OR IGNORE INTO products (product_id, category)
-            VALUES (?, ?)
-            """,
-            (row["product_id"], row["category"])
-        )
+    cursor.executemany("""
+        INSERT OR IGNORE INTO products (product_id, category)
+        VALUES (?, ?)
+    """, data)
 
     conn.commit()
     conn.close()
 
-    print("Products inserted")
+    print(f"Inserted {len(df)} products")
 
+
+# ---------------- MAIN PIPELINE ----------------
 
 if __name__ == "__main__":
 
-    #load interactions
+    print("🚀 Starting ML pipeline...")
+
+    # Load data
     events_df = load_and_clean_events()
 
-    #insert interactions
+    # Insert users first (important!)
+    insert_users(events_df)
+
+    # Insert interactions
     insert_interactions(events_df)
 
-    #get product IDs
-    product_ids = get_interaction_product_ids()
+    # Get product IDs
+    product_ids = get_product_ids()
 
-    # extract categories
+    # Extract categories
     category_df = extract_product_categories(product_ids)
 
-    #insert products
+    # Insert products
     insert_products(category_df)
 
+    print("✅ Data pipeline completed successfully!")

@@ -1,14 +1,16 @@
 import sqlite3
 
+DB_NAME = "users.db"
 
-# connect to database
+
 def get_db_connection():
-    conn = sqlite3.connect("users.db")
+    conn = sqlite3.connect(DB_NAME)
     conn.row_factory = sqlite3.Row
     return conn
 
 
-# create users table
+# ---------------- USERS ----------------
+
 def create_users_table():
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -16,7 +18,7 @@ def create_users_table():
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            username TEXT NOT NULL UNIQUE,
+            username TEXT UNIQUE NOT NULL,
             password TEXT NOT NULL
         )
     """)
@@ -25,7 +27,8 @@ def create_users_table():
     conn.close()
 
 
-# create products table
+# ---------------- PRODUCTS ----------------
+
 def create_products_table():
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -38,10 +41,16 @@ def create_products_table():
     """)
 
     conn.commit()
+
+    # 🔥 IMPORTANT: index for fast recommendation queries
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_product_id ON products(product_id)")
+
+    conn.commit()
     conn.close()
 
 
-# create interactions table
+# ---------------- INTERACTIONS ----------------
+
 def create_interactions_table():
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -57,6 +66,11 @@ def create_interactions_table():
             FOREIGN KEY(product_id) REFERENCES products(product_id)
         )
     """)
+
+    # 🔥 Indexes (VERY IMPORTANT for ML + queries)
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_user ON interactions(user_id)")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_product ON interactions(product_id)")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_time ON interactions(timestamp)")
 
     conn.commit()
     conn.close()

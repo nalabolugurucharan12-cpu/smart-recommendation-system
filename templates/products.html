@@ -6,17 +6,14 @@
 </head>
 <body>
 
-<h2>Products</h2>
+<h2>🛍 Products</h2>
 
-<div class="products-container">
-    <button onclick="interact(101, 'view')">Product 101 (View)</button>
-    <button onclick="interact(102, 'cart')">Product 102 (Cart)</button>
-    <button onclick="interact(103, 'purchase')">Product 103 (Buy)</button>
-</div>
+<!-- PRODUCT GRID -->
+<div id="product-grid" class="grid"></div>
 
 <hr>
 
-<h3>Recommendations</h3>
+<h2>🎯 Recommendations</h2>
 
 <div class="btn-group">
     <button onclick="loadRecommendations('/recommend/popular')">Popular</button>
@@ -24,24 +21,20 @@
     <button onclick="loadRecommendations('/recommend/hybrid')">🔥 Hybrid</button>
 </div>
 
-<!-- 🔥 NEW GRID -->
-<div id="results" class="grid"></div>
+<!-- RECOMMENDATION GRID -->
+<div id="recommend-grid" class="grid"></div>
 
 <a href="/">Back</a>
 
 <script>
-function interact(productId, action) {
-    fetch(`/interact/${productId}/${action}`)
-        .then(res => res.text())
-        .then(data => alert(data));
-}
 
-function loadRecommendations(url) {
-    fetch(url)
+// ---------------- LOAD PRODUCTS ----------------
+function loadProducts() {
+    fetch('/products/list')
         .then(res => res.json())
         .then(data => {
 
-            let container = document.getElementById("results");
+            let container = document.getElementById("product-grid");
             container.innerHTML = "";
 
             data.forEach(item => {
@@ -50,8 +43,14 @@ function loadRecommendations(url) {
                 card.className = "card";
 
                 card.innerHTML = `
-                    <p><strong>Product ID:</strong> ${item.product_id}</p>
-                    <p><strong>Category:</strong> ${item.category}</p>
+                    <h4>Product ${item.product_id}</h4>
+                    <p>Category: ${item.category}</p>
+
+                    <div class="actions">
+                        <button onclick="interact(${item.product_id}, 'view')">View</button>
+                        <button onclick="interact(${item.product_id}, 'cart')">Cart</button>
+                        <button onclick="interact(${item.product_id}, 'purchase')">Buy</button>
+                    </div>
                 `;
 
                 container.appendChild(card);
@@ -59,10 +58,57 @@ function loadRecommendations(url) {
         });
 }
 
-// Auto load hybrid
+
+// ---------------- LOAD RECOMMENDATIONS ----------------
+function loadRecommendations(url) {
+    fetch(url)
+        .then(res => res.json())
+        .then(data => {
+
+            let container = document.getElementById("recommend-grid");
+            container.innerHTML = "";
+
+            data.forEach(item => {
+
+                let card = document.createElement("div");
+                card.className = "card highlight";
+
+                card.innerHTML = `
+                    <h4>Product ${item.product_id}</h4>
+                    <p>Category: ${item.category}</p>
+
+                    <div class="actions">
+                        <button onclick="interact(${item.product_id}, 'view')">View</button>
+                        <button onclick="interact(${item.product_id}, 'cart')">Cart</button>
+                        <button onclick="interact(${item.product_id}, 'purchase')">Buy</button>
+                    </div>
+                `;
+
+                container.appendChild(card);
+            });
+        });
+}
+
+
+// ---------------- INTERACTION ----------------
+function interact(productId, action) {
+    fetch(`/interact/${productId}/${action}`)
+        .then(res => res.json())
+        .then(data => {
+            alert(data.message || data.error);
+
+            // reload recommendations after interaction
+            loadRecommendations('/recommend/hybrid');
+        });
+}
+
+
+// ---------------- AUTO LOAD ----------------
 window.onload = function() {
+    loadProducts();
     loadRecommendations('/recommend/hybrid');
 };
+
 </script>
 
 </body>
