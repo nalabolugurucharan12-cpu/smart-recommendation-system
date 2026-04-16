@@ -8,7 +8,7 @@
 
 <h2>Products</h2>
 
-<div id="products">
+<div class="products-container">
     <button onclick="interact(101, 'view')">Product 101 (View)</button>
     <button onclick="interact(102, 'cart')">Product 102 (Cart)</button>
     <button onclick="interact(103, 'purchase')">Product 103 (Buy)</button>
@@ -18,12 +18,14 @@
 
 <h3>Recommendations</h3>
 
-<!-- Removed hardcoded user_id -->
-<button onclick="loadRecommendations('/recommend/popular')">Popular</button>
-<button onclick="loadRecommendations('/recommend/trending')">Trending</button>
-<button onclick="loadRecommendations('/recommend/hybrid')">🔥 Hybrid</button>
+<div class="btn-group">
+    <button onclick="loadRecommendations('/recommend/popular')">Popular</button>
+    <button onclick="loadRecommendations('/recommend/trending')">Trending</button>
+    <button onclick="loadRecommendations('/recommend/hybrid')">🔥 Hybrid</button>
+</div>
 
-<ul id="results"></ul>
+<!-- 🔥 NEW GRID -->
+<div id="results" class="grid"></div>
 
 <a href="/">Back</a>
 
@@ -38,22 +40,26 @@ function loadRecommendations(url) {
     fetch(url)
         .then(res => res.json())
         .then(data => {
-            let list = document.getElementById("results");
-            list.innerHTML = "";
+
+            let container = document.getElementById("results");
+            container.innerHTML = "";
 
             data.forEach(item => {
-                let li = document.createElement("li");
-                li.innerText = JSON.stringify(item);
-                list.appendChild(li);
+
+                let card = document.createElement("div");
+                card.className = "card";
+
+                card.innerHTML = `
+                    <p><strong>Product ID:</strong> ${item.product_id}</p>
+                    <p><strong>Category:</strong> ${item.category}</p>
+                `;
+
+                container.appendChild(card);
             });
         });
 }
 
-// ✅ AUTO LOAD recommendations when page opens
-window.onload = function() {
-    loadRecommendations('/recommend/hybrid');
-};
-
+// Auto load hybrid
 window.onload = function() {
     loadRecommendations('/recommend/hybrid');
 };

@@ -3,7 +3,7 @@ import pandas as pd
 from sklearn.metrics.pairwise import cosine_similarity
 
 
-def collaborative_recommend(user_id, limit=5):
+def collaborative_recommend(user_id, limit=10):
 
     conn = sqlite3.connect("users.db")
 
@@ -18,7 +18,7 @@ def collaborative_recommend(user_id, limit=5):
 
     df["timestamp"] = pd.to_datetime(df["timestamp"], errors='coerce')
     df = df.dropna(subset=["timestamp"])
-    
+
     weight_map = {
         "view": 1,
         "cart": 3,
@@ -63,14 +63,13 @@ def collaborative_recommend(user_id, limit=5):
         .sort_values(ascending=False)
     )
 
-    # REMOVE ALREADY SEEN PRODUCTS
     seen_products = set(df[df["user_id"] == user_id]["product_id"])
     product_scores = product_scores[~product_scores.index.isin(seen_products)]
 
     return list(product_scores.head(limit).index)
 
 
-def get_popular_products(limit=5):
+def get_popular_products(limit=50):
 
     conn = sqlite3.connect("users.db")
     cursor = conn.cursor()
@@ -83,13 +82,13 @@ def get_popular_products(limit=5):
         LIMIT ?
     """, (limit,))
 
-    results = cursor.fetchall()
+    results = [r[0] for r in cursor.fetchall()]
     conn.close()
 
     return results
 
 
-def get_trending_products(limit=5):
+def get_trending_products(limit=50):
 
     conn = sqlite3.connect("users.db")
     cursor = conn.cursor()
@@ -103,13 +102,13 @@ def get_trending_products(limit=5):
         LIMIT ?
     """, (limit,))
 
-    results = cursor.fetchall()
+    results = [r[0] for r in cursor.fetchall()]
     conn.close()
 
     return results
 
 
-def get_user_recommendations(user_id, limit=5):
+def get_user_recommendations(user_id, limit=10):
 
     conn = sqlite3.connect("users.db")
     cursor = conn.cursor()
@@ -128,7 +127,7 @@ def get_user_recommendations(user_id, limit=5):
         return []
 
     query = f"""
-        SELECT product_id, category
+        SELECT product_id
         FROM products
         WHERE category IN ({','.join(['?']*len(categories))})
         LIMIT ?
@@ -136,41 +135,60 @@ def get_user_recommendations(user_id, limit=5):
 
     cursor.execute(query, (*categories, limit))
 
-    results = cursor.fetchall()
+    results = [r[0] for r in cursor.fetchall()]
     conn.close()
 
     return results
 
 
-#  HYBRID RECOMMENDE
-def hybrid_recommend(user_id, limit=5):
+#  FINAL HYBRID 
+def hybrid_recommend(user_id, limit=30):
 
-    collab = collaborative_recommend(user_id, limit=10)
-    content = [p[0] for p in get_user_recommendations(user_id, limit=10)]
-    trending = [p[0] for p in get_trending_products(limit=10)]
-    popular = [p[0] for p in get_popular_products(limit=10)]
+    collab = collaborative_recommend(user_id, limit=20)
+    content = get_user_recommendations(user_id, limit=20)
+    trending = get_trending_products(limit=50)
+    popular = get_popular_products(limit=50)
 
-    #  COLD START HANDLING
+    #  COLD START FIX 
     if not collab and not content:
-        # Try trending first
-        if trending:
-            return trending[:limit]
-        # Final fallback
-        return popular[:limit]
+        combined = trending + popular
+        combined = list(dict.fromkeys(combined))  # remove duplicates
+        return get_product_details(combined[:limit])
 
     # Combine all
     combined = collab + content + trending + popular
 
-    # Remove duplicates while preserving order
-    seen = set()
+    # Remove duplicates
+    combined = list(dict.fromkeys(combined))
+
+    return get_product_details(combined[:limit])
+
+
+def get_product_details(product_ids):
+
+    if not product_ids:
+        return []
+
+    conn = sqlite3.connect("users.db")
+    cursor = conn.cursor()
+
+    query = f"""
+        SELECT product_id, category
+        FROM products
+        WHERE product_id IN ({','.join(['?']*len(product_ids))})
+    """
+
+    cursor.execute(query, product_ids)
+    results = cursor.fetchall()
+    conn.close()
+
+    category_map = {r[0]: r[1] for r in results}
+
     final = []
-
-    for p in combined:
-        if p not in seen:
-            seen.add(p)
-            final.append(p)
-
-        if len(final) == limit:
-            break
+    for pid in product_ids:
+        final.append({
+            "product_id": pid,
+            "category": category_map.get(pid, "Unknown")
+        })
 
     return final
