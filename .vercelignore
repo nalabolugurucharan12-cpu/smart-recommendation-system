@@ -1,0 +1,12 @@
+# Ignore local-only files from Vercel uploads
+.venv/
+.env
+__pycache__/
+*.pyc
+*.pyo
+*.db
+.vercel/
+check_db.py
+start.sh
+Procfile
+data/

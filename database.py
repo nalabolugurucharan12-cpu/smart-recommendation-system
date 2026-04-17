@@ -2,12 +2,23 @@ import os
 import shutil
 import sqlite3
 import tempfile
+from urllib.parse import urlparse
 
-ROOT_DB_NAME = os.path.join(os.path.dirname(__file__), "users.db")
+ROOT_DIR = os.path.dirname(__file__)
+ROOT_DB_NAME = os.path.join(ROOT_DIR, "users.db")
+DATABASE_URL = os.environ.get("DATABASE_URL")
 
 
 def get_db_path():
-    if os.environ.get("VERCEL") or not os.access(os.path.dirname(__file__), os.W_OK):
+    if DATABASE_URL:
+        parsed = urlparse(DATABASE_URL)
+        if parsed.scheme in ("sqlite", "sqlite3"):
+            db_path = parsed.path or ""
+            if os.name == "nt" and db_path.startswith("/") and len(db_path) > 2 and db_path[2] == ":":
+                db_path = db_path[1:]
+            return os.path.abspath(db_path) if db_path else ROOT_DB_NAME
+
+    if os.environ.get("VERCEL") or not os.access(ROOT_DIR, os.W_OK):
         tmp_dir = os.path.join(tempfile.gettempdir(), "smart-recommendation-system")
         os.makedirs(tmp_dir, exist_ok=True)
         tmp_db = os.path.join(tmp_dir, "users.db")

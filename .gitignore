@@ -2,6 +2,8 @@ data/
 .env
 .venv/
 __pycache__/
+.vercel/
 check_db.py
 *.db
+.DS_Store
 
