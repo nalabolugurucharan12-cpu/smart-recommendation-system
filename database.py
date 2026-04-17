@@ -1,7 +1,26 @@
 import os
+import shutil
 import sqlite3
+import tempfile
 
-DB_NAME = os.path.join(os.path.dirname(__file__), "users.db")
+ROOT_DB_NAME = os.path.join(os.path.dirname(__file__), "users.db")
+
+
+def get_db_path():
+    if os.environ.get("VERCEL") or not os.access(os.path.dirname(__file__), os.W_OK):
+        tmp_dir = os.path.join(tempfile.gettempdir(), "smart-recommendation-system")
+        os.makedirs(tmp_dir, exist_ok=True)
+        tmp_db = os.path.join(tmp_dir, "users.db")
+
+        if not os.path.exists(tmp_db) and os.path.exists(ROOT_DB_NAME):
+            shutil.copy2(ROOT_DB_NAME, tmp_db)
+
+        return tmp_db
+
+    return ROOT_DB_NAME
+
+
+DB_NAME = get_db_path()
 
 
 def get_db_connection():
