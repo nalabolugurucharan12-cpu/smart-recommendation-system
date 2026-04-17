@@ -83,7 +83,7 @@ def register():
     return render_template("register.html")
 
 
-# ---------------- PRODUCTS ----------------
+#  PRODUCTS
 
 @app.route("/products")
 def products():
@@ -108,7 +108,7 @@ def list_products():
     ])
 
 
-# ---------------- INTERACTIONS ----------------
+#INTERACTIONS
 
 @app.route("/interact/<int:product_id>/<action>")
 def interact(product_id, action):
@@ -132,7 +132,7 @@ def interact(product_id, action):
     return jsonify({"message": f"{action} recorded"})
 
 
-# ---------------- RECOMMENDATIONS ----------------
+#  RECOMMENDATIONS 
 
 @app.route("/recommend/popular")
 def recommend_popular():
@@ -181,7 +181,6 @@ def recommend_hybrid():
     return jsonify(hybrid_recommend(user_id))
 
 
-# ---------------- RUN ----------------
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(host="0.0.0.0", port=10000)
