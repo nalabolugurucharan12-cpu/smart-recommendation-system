@@ -1,9 +1,7 @@
 import sqlite3
 import pandas as pd
 from sklearn.metrics.pairwise import cosine_similarity
-
-
-DB_NAME = "users.db"
+from database import DB_NAME
 
 
 def get_data():
